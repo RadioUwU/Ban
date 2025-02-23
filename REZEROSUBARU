@@ -1,0 +1,679 @@
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+
+local movelist = Instance.new("TextLabel", gui)
+movelist.Size = UDim2.new(0.15, 0, 0.07, 0) -- Smaller size
+movelist.Position = UDim2.new(0.85, 0, 0.4, 0) -- Moved more to the right
+movelist.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Gray box
+movelist.BackgroundTransparency = 0.3 -- Slight transparency
+movelist.BorderSizePixel = 2 -- Thin border
+movelist.Text = "T - Manual Return By Death (Purple Clones) \nY - Return To Others By Death (Yellow Clones) \n Dying = Auto Return By Death \n Made By Ban"
+movelist.TextColor3 = Color3.new(1, 1, 1) -- White text
+movelist.TextStrokeTransparency = 0.2 -- Slight outline
+movelist.Font = Enum.Font.SourceSansBold
+movelist.TextScaled = false
+movelist.TextSize = 16 -- Small text lol
+movelist.TextWrapped = true
+movelist.TextXAlignment = Enum.TextXAlignment.Left
+movelist.TextYAlignment = Enum.TextYAlignment.Top
+
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local localPlayer = Players.LocalPlayer
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = localPlayer:FindFirstChildOfClass("PlayerGui")
+
+-- Blur Effect
+local blurEffect = Instance.new("BlurEffect")
+blurEffect.Size = 0
+blurEffect.Parent = Lighting
+
+-- Red Screen Effect
+local redOverlay = Instance.new("Frame")
+redOverlay.Parent = screenGui
+redOverlay.Size = UDim2.new(1, 0, 1, 0)
+redOverlay.BackgroundColor3 = Color3.new(1, 0, 0) -- Red
+redOverlay.BackgroundTransparency = 1
+redOverlay.Visible = false
+
+
+local Test = game.ReplicatedStorage.Resources.AtomicFX.particlesroot.RootFlame
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Get the R6 Left and Right Arms
+local leftArm = character:WaitForChild("Left Arm")
+local rightArm = character:WaitForChild("Right Arm")
+
+local function createEffect(arm)
+    local effect = Test:Clone()
+    effect.Parent = arm
+
+    -- Adjust the effect's position relative to the arm (modify values as needed)
+    effect.Position = effect.Position + Vector3.new(0, 2, 0)
+
+    -- Modify particle properties
+    for _, child in ipairs(effect:GetChildren()) do
+        if child:IsA("ParticleEmitter") then
+            child:Emit(15)
+            child.Enabled = true
+
+            -- Set color to a blend of purple and black
+            child.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 0, 50)), -- Dark Purple
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))      -- Black
+            })
+        end
+    end
+end
+
+-- Apply the effect to both arms
+createEffect(leftArm)
+createEffect(rightArm)
+
+
+
+
+-- Death Message Text
+local deathLabel = Instance.new("TextLabel")
+deathLabel.Parent = screenGui
+deathLabel.Size = UDim2.new(1, 0, 0.2, 0) -- Covers top portion of screen
+deathLabel.Position = UDim2.new(0, 0, 0.4, 0) -- Centered
+deathLabel.BackgroundTransparency = 1 -- No background
+deathLabel.TextColor3 = Color3.new(0, 0, 0) -- Black text
+deathLabel.TextScaled = true
+deathLabel.Font = Enum.Font.GothamBlack
+deathLabel.Visible = false
+
+-- Teleport Sound
+local teleportSound = Instance.new("Sound")
+teleportSound.SoundId = "rbxassetid://101627462619966"
+teleportSound.Volume = 1
+teleportSound.Parent = workspace
+
+-- Death Messages and Corresponding Sounds
+local deathMessages = {
+    {"You perished...", "rbxassetid://9109618738"},
+    {"RIP, better luck next time!", "rbxassetid://5711674583"},
+    {"You gonna cry?", "rbxassetid://7574780072"},
+    {"Does he know?", "rbxassetid://104169090556649"},
+    {"HE DOESNT KNOW", "rbxassetid://347611423"},
+    {"What's 9+10?", "rbxassetid://4122963778"},
+    {"Womp womp", "rbxassetid://8090403894"},
+    {"Don't ragequit", "rbxassetid://80551384863213"},
+    {"You are filled with Determination.", "rbxassetid://18950593618"},
+    {"Can't die now!", "rbxassetid://"},
+    {"GETTTT DUNKKKEDDD ONNN!!", "rbxassetid://18950593618"},
+    {"Michael Jackson would be soooo mad", "rbxassetid://6949881562"},
+    {"Wasted", "rbxassetid://153239830"},
+    {"Darkness takes you...", "rbxassetid://528432644"},
+    {"CRY CRY CRY", "rbxassetid://5000037880"},
+    {"Pop Ult Rn", "rbxassetid://162345678"},
+    {"BOOM! Layer 2 Bell.", "rbxassetid://18282082025"},
+    {"This is, Requiem.", "rbxassetid://17658209512"},
+    {"Insert Darksouls Reference", "rbxassetid://171270157"},
+    {"Out of all people, you died to THEM??", "rbxassetid://6514471509"}
+}
+
+-- Function to fade out effects
+local function fadeOutEffects()
+    local fadeTweenRed = TweenService:Create(redOverlay, TweenInfo.new(2), {BackgroundTransparency = 1})
+    local fadeTweenText = TweenService:Create(deathLabel, TweenInfo.new(2), {TextTransparency = 1})
+    local blurTween = TweenService:Create(blurEffect, TweenInfo.new(2), {Size = 0})
+
+    fadeTweenRed:Play()
+    fadeTweenText:Play()
+    blurTween:Play()
+
+    fadeTweenRed.Completed:Connect(function()
+        redOverlay.Visible = false
+        deathLabel.Visible = false
+        deathLabel.TextTransparency = 0 -- Reset for next time
+        redOverlay.BackgroundTransparency = 1
+    end)
+end
+
+-- Function to handle health changes
+local function checkHealth(humanoid)
+    if humanoid.Health <= 0 then
+        task.wait(0.2) -- Small delay to ensure death is registered
+
+        -- Pick a random death message and sound
+        local randomIndex = math.random(1, #deathMessages)
+        local randomMessage, soundId = deathMessages[randomIndex][1], deathMessages[randomIndex][2]
+        print("" .. randomMessage)
+
+        -- Play death sound
+        local deathSound = Instance.new("Sound")
+        deathSound.SoundId = soundId
+        deathSound.Volume = 1
+        deathSound.Parent = workspace
+        deathSound:Play()
+
+        -- Show death message with effects
+        redOverlay.Visible = true
+        redOverlay.BackgroundTransparency = 0.2
+        deathLabel.Text = randomMessage
+        deathLabel.Visible = true
+        blurEffect.Size = 20 -- Apply blur effect
+
+        -- Start fade out after 3 seconds
+        task.wait(3)
+        fadeOutEffects()
+
+        -- Store latest death position
+        local character = humanoid.Parent
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                local deathPosition = rootPart.Position
+                print("", deathPosition)
+
+                -- Create a part at death position
+                local deathMarker = Instance.new("Part")
+                deathMarker.Size = Vector3.new(2, 2, 2)
+                deathMarker.Position = deathPosition + Vector3.new(0, 1, 0)
+                deathMarker.Anchored = true
+                deathMarker.CanCollide = false
+                deathMarker.Color = Color3.new(1, 0, 0) -- Red
+                deathMarker.Material = Enum.Material.Neon
+                deathMarker.Parent = workspace
+
+                -- Wait 2 seconds to teleport
+                task.wait(2.4)
+
+                -- Check if the part still exists (if player hasn't been teleported yet)
+                if deathMarker and deathMarker.Parent then
+                    -- Teleport player back
+                    local newCharacter = localPlayer.Character
+                    if newCharacter then
+                        local newRootPart = newCharacter:FindFirstChild("HumanoidRootPart")
+                        if newRootPart then
+                            newRootPart.CFrame = CFrame.new(deathMarker.Position + Vector3.new(0, 3, 0)) -- Slightly above marker
+                            print("", deathMarker.Position)
+
+                            -- Play teleport sound
+                            teleportSound:Play()
+                        else
+                            print("")
+                        end
+                    end
+
+                    -- Destroy the marker after teleporting
+                    deathMarker:Destroy()
+                    print("")
+                end
+            else
+                print("")
+            end
+        end
+    elseif humanoid.Health <= (humanoid.MaxHealth * 0.3) then
+        deathLabel.Text = "LOW HEALTH!"
+        deathLabel.TextColor3 = Color3.new(1, 0.5, 0) -- Orange
+        deathLabel.Visible = true
+        fadeOutEffects()
+    end
+end
+
+-- Function to handle new character spawn
+local function onCharacterAdded(newCharacter)
+    local humanoid = newCharacter:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        humanoid.HealthChanged:Connect(function() checkHealth(humanoid) end)
+    end
+end
+
+-- Detect when player respawns
+localPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Initialize (for when the script first runs)
+if localPlayer.Character then
+    onCharacterAdded(localPlayer.Character)
+end
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local executionCounter = ReplicatedStorage:FindFirstChild("ExecutionCounter")
+
+-- Ensure ExecutionCounter exists
+if not executionCounter then
+    executionCounter = Instance.new("IntValue")
+    executionCounter.Name = "ExecutionCounter"
+    executionCounter.Parent = ReplicatedStorage
+    executionCounter.Value = 0
+end
+
+-- Increment counter
+executionCounter.Value = executionCounter.Value + 1
+print(" " .. executionCounter.Value .. " times")
+
+-- Time of Day Cycle
+local timeCycle = {12, 18, 20, 0}
+local darknessLevels = {1, 0.7, 0.4, 0.2}
+local index = ((executionCounter.Value - 1) % #timeCycle) + 1
+
+local newTime = timeCycle[index]
+local darkness = darknessLevels[index]
+
+-- Tween Lighting to change time smoothly
+TweenService:Create(Lighting, TweenInfo.new(2), {
+    ClockTime = newTime,
+    Brightness = darkness,
+    Ambient = Color3.new(darkness, darkness, darkness)
+}):Play()
+
+print("", newTime, "", darkness)
+
+-- Function to freeze the player
+local function freezePlayer(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.Anchored = true -- Stops movement
+    end
+end
+
+-- Function to unfreeze the player
+local function unfreezePlayer(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.Anchored = false -- Allows movement again
+    end
+end
+
+-- Function to send messages in chat
+local function sendMessage(text)
+    local args = {
+        [1] = text,
+        [2] = "All"
+    }
+    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(unpack(args))
+end
+
+-- KICK SYSTEM: If executed 5 times, play animation, chat sequence, then kick
+local function executeFinalKick()
+    local character = localPlayer.Character
+    if not character then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    local animator = humanoid:FindFirstChildOfClass("Animator")
+    if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = humanoid
+    end
+
+    -- Execution animation
+    local anim = Instance.new("Animation")
+    anim.AnimationId = "rbxassetid://17107937300" -- Replace with actual animation ID
+
+    local track = animator:LoadAnimation(anim)
+    
+    if track then
+        -- Freeze player
+        freezePlayer(character)
+
+        -- Play animation
+        track:Play()
+        print("")
+
+        -- Pause animation for dramatic effect
+        task.wait(3.5) -- 1-second pause
+        track:AdjustSpeed(0) -- Freeze animation
+        print("")
+
+        -- First chat message
+        sendMessage("I can't..")
+        task.wait(1.5) -- Short delay
+
+        -- Second chat message
+        sendMessage("I can't do this anymore, I've died over a million times..")
+        task.wait(2) -- Slightly longer pause
+
+        -- Final shout
+        sendMessage("NO, I CAN'T!")
+
+	wait(2)
+        -- Final shout
+        sendMessage("HAHA!")
+        
+
+        -- Wait a bit before kicking
+        task.wait(2) 
+        
+        -- Kick the player with custom message
+        localPlayer:Kick(localPlayer.Name .. " HAS LOST THE WILL TO LIVE")
+    else
+        warn("❌ Failed to load execution animation")
+    end
+end
+
+-- If counter reaches 5, execute final kick sequence
+if executionCounter.Value >= 5 then
+    executeFinalKick()
+end
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local teleportDelay = 10 -- Time before placing a marker
+local cloneMarkers = {} -- Stores clones for teleportation
+local cloneDistance = 5 -- Distance behind each character
+local detectionRadius = 100 -- Detection radius for players
+
+-- Function to create a clone behind players near the local player
+local function createClonesBehindPlayers()
+    -- Clear previous clones
+    for _, clone in pairs(cloneMarkers) do
+        if clone and clone.Parent then
+            clone:Destroy()
+        end
+    end
+    table.clear(cloneMarkers)
+    
+    -- Loop through all players in range
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local targetCharacter = otherPlayer.Character
+            
+            -- Ensure it's not a clone
+            if not targetCharacter:FindFirstChild("IsClone") then
+                local root = targetCharacter:FindFirstChild("HumanoidRootPart")
+                if root and (root.Position - humanoidRootPart.Position).Magnitude <= detectionRadius then
+                    local clone = targetCharacter:Clone() -- Clone the other player
+                    clone.Parent = workspace
+                    clone.Name = targetCharacter.Name .. "_Clone" -- Unique name
+                    
+                    -- Add a marker to prevent clones of clones
+                    local marker = Instance.new("BoolValue")
+                    marker.Name = "IsClone"
+                    marker.Parent = clone
+                    
+                    local cloneRoot = clone:FindFirstChild("HumanoidRootPart")
+                    if cloneRoot then
+                        -- Position the clone behind the player
+                        local behindPosition = root.Position - (root.CFrame.LookVector * cloneDistance)
+                        clone:SetPrimaryPartCFrame(CFrame.new(behindPosition))
+                    end
+                    
+                    -- Make the clone an outline
+                    for _, part in pairs(clone:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.Transparency = 0.5
+                            part.BrickColor = BrickColor.new("Bright yellow")
+                            part.Material = Enum.Material.ForceField
+                            part.CanCollide = false
+                        end
+                    end
+                    
+                    cloneMarkers[otherPlayer] = clone
+                end
+            end
+        end
+    end
+end
+
+-- Function to teleport to a clone if facing it
+local function teleportToClone()
+    local forwardVector = humanoidRootPart.CFrame.LookVector
+    for _, clone in pairs(cloneMarkers) do
+        local cloneRoot = clone:FindFirstChild("HumanoidRootPart")
+        if cloneRoot then
+            local direction = (cloneRoot.Position - humanoidRootPart.Position).Unit
+            local dotProduct = direction:Dot(forwardVector)
+            if dotProduct > 0.9 then -- Ensure player is looking at the clone
+                humanoidRootPart.CFrame = cloneRoot.CFrame
+                return
+            end
+        end
+    end
+    warn("No valid clone in front to teleport to!")
+end
+
+-- Track position every 10 seconds
+task.spawn(function()
+    while true do
+        task.wait(teleportDelay)
+        createClonesBehindPlayers()
+    end
+end)
+
+-- Keybinds for teleporting
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.Y then -- Press 'Y' to teleport to a clone
+            teleportToClone()
+        end
+    end
+end)
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local clone = nil -- Store the player's clone
+local cloneInterval = 30 -- Time in seconds before a new clone is created
+
+-- Function to create a clone of the player
+local function createClone()
+    if clone then
+        clone:Destroy() -- Remove the existing clone if it exists
+    end
+    
+    clone = character:Clone()
+    clone.Parent = workspace
+    clone.Name = player.Name .. "_Clone"
+    
+    -- Ensure the clone has a HumanoidRootPart
+    local cloneRoot = clone:FindFirstChild("HumanoidRootPart")
+    if cloneRoot then
+        clone:SetPrimaryPartCFrame(humanoidRootPart.CFrame) -- Spawn at current position
+    end
+    
+    -- Make the clone purple with ForceField material
+    for _, part in pairs(clone:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = 0.5
+            part.BrickColor = BrickColor.new("Bright violet")
+            part.Material = Enum.Material.ForceField
+            part.CanCollide = false
+        end
+    end
+end
+
+-- Function to teleport to the clone
+local function teleportToClone()
+    if clone and clone.Parent then
+        local cloneRoot = clone:FindFirstChild("HumanoidRootPart")
+        if cloneRoot then
+            humanoidRootPart.CFrame = cloneRoot.CFrame
+        end
+    else
+        warn("No clone exists to teleport to!")
+    end
+end
+
+-- Automatically create a clone every 30 seconds
+task.spawn(function()
+    while true do
+        task.wait(cloneInterval)
+        createClone()
+    end
+end)
+
+-- Keybind to teleport to the clone
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.T then
+        teleportToClone()
+    end
+end)
+
+
+wait(7)
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+_G.CloneCount = (_G.CloneCount or 0) + 1  
+_G.SpeedMultiplier = (_G.SpeedMultiplier or 1) * 1.1  
+
+local minDistance = 50  
+local maxDistance = 100  
+local baseSpeed = 1  
+
+local function getFarSpawnPosition()
+    local angle = math.rad(math.random(0, 360))  
+    local distance = math.random(minDistance, maxDistance)
+    local xOffset = math.cos(angle) * distance
+    local zOffset = math.sin(angle) * distance
+    local groundPosition = humanoidRootPart.Position + Vector3.new(xOffset, 0, zOffset)
+
+    local ray = Ray.new(groundPosition + Vector3.new(0, 50, 0), Vector3.new(0, -100, 0))  
+    local hit, position = workspace:FindPartOnRay(ray)  
+
+    return position or groundPosition  
+end
+
+for i = 1, _G.CloneCount do
+    local clone = character:Clone()
+    clone.Parent = workspace
+    clone.Name = "??"
+
+    local cloneHumanoid = clone:FindFirstChildOfClass("Humanoid")
+    if cloneHumanoid then
+        cloneHumanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+        cloneHumanoid.WalkSpeed = baseSpeed * _G.SpeedMultiplier  
+    end
+
+    for _, obj in ipairs(clone:GetChildren()) do
+        if obj:IsA("Script") or obj:IsA("LocalScript") then
+            obj:Destroy()
+        elseif obj:IsA("Decal") and obj.Name == "face" then  
+            obj:Destroy()  
+        end
+    end
+
+    local cloneRootPart = clone:FindFirstChild("HumanoidRootPart")
+    if cloneRootPart then
+        clone:SetPrimaryPartCFrame(CFrame.new(getFarSpawnPosition(), humanoidRootPart.Position))
+
+        for _, part in ipairs(clone:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("MeshPart") then
+                part.Transparency = 1  
+                part.Anchored = false  
+            end
+        end
+
+        local moveSpeed = baseSpeed * _G.SpeedMultiplier  
+
+        local function followPlayer()
+            while clone.Parent and character and humanoidRootPart do
+                local direction = (humanoidRootPart.Position - cloneRootPart.Position).unit
+                local targetPosition = cloneRootPart.Position + (direction * moveSpeed)
+
+                local ray = Ray.new(targetPosition + Vector3.new(0, 10, 0), Vector3.new(0, -20, 0))
+                local hit, position = workspace:FindPartOnRay(ray)
+
+                if position then
+                    targetPosition = Vector3.new(targetPosition.X, position.Y + 2, targetPosition.Z)  
+                end
+
+                cloneHumanoid:MoveTo(targetPosition)
+
+                wait(0.5)  
+            end
+        end
+
+        local function teleportRandomly()
+            while clone.Parent do
+                wait(math.random(8, 15))  
+                local newPosition = getFarSpawnPosition()
+                clone:SetPrimaryPartCFrame(CFrame.new(newPosition, humanoidRootPart.Position))
+            end
+        end
+
+        local function createParticle(textureID, size, color, offset)
+            local particle = Instance.new("ParticleEmitter")
+            particle.Texture = "rbxassetid://" .. textureID
+            particle.Rate = 20
+            particle.Lifetime = NumberRange.new(2, 3)
+            particle.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, size),
+                NumberSequenceKeypoint.new(1, size * 0.8)
+            })
+            particle.Speed = NumberRange.new(0.3, 0.6)
+            particle.Rotation = NumberRange.new(0, 360)
+            particle.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.9),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+            particle.Acceleration = Vector3.new(0, 0.5, 0)
+            particle.Color = color
+            particle.Parent = cloneRootPart
+
+            local attachment = Instance.new("Attachment", cloneRootPart)
+            attachment.Position = offset
+            particle.Parent = attachment
+        end
+
+        createParticle("6820236400", 12, ColorSequence.new(Color3.fromRGB(255, 255, 255)), Vector3.new(0, 0, 0))  
+        createParticle("10050828365", 9, ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 0, 50)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+        }), Vector3.new(0, 0, -2))  
+
+        cloneRootPart.Touched:Connect(function(hit)
+            if hit.Parent == character then
+                local playerHumanoid = hit.Parent:FindFirstChildOfClass("Humanoid")
+                if playerHumanoid then
+                    playerHumanoid.Health = 0  
+
+                    for _, part in ipairs(clone:GetDescendants()) do
+                        if part:IsA("BasePart") or part:IsA("MeshPart") then
+                            game:GetService("TweenService"):Create(part, TweenInfo.new(1), {Transparency = 1}):Play()
+                        end
+                    end
+                    wait(1)
+                    clone:Destroy()  
+                end
+            end
+        end)
+
+        local function fadeOutAndRemoveClones()
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if obj.Name == "??" then
+                    for _, part in ipairs(obj:GetDescendants()) do
+                        if part:IsA("BasePart") or part:IsA("MeshPart") then
+                            local tween = game:GetService("TweenService"):Create(part, TweenInfo.new(1), {Transparency = 1})
+                            tween:Play()
+                            tween.Completed:Wait()
+                        end
+                    end
+                    obj:Destroy()
+                end
+            end
+        end
+
+        humanoid.Died:Connect(fadeOutAndRemoveClones)
+
+        task.spawn(followPlayer)
+        task.spawn(teleportRandomly)
+    else
+        warn("")
+    end
+end
